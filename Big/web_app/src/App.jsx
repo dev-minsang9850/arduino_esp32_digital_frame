@@ -238,14 +238,13 @@ function App() {
         )}
 
         {/* Upload Button */}
-        <div style={{ position: 'fixed', bottom: '30px', left: '0', right: '0', display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+        <div style={{ position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)', zIndex: 100 }}>
           <motion.button 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleUploadClick}
             disabled={isUploading}
             style={{
-              pointerEvents: 'auto',
               background: 'linear-gradient(135deg, #0885ff, #ff00cc)',
               color: '#fff', border: 'none', borderRadius: '30px',
               padding: '16px 32px', fontSize: '18px', fontWeight: '600',
@@ -271,7 +270,7 @@ function App() {
         {/* Hidden File Input */}
         <input 
           type="file" 
-          accept="image/jpeg, image/jpg" 
+          accept="image/*" 
           ref={fileInputRef}
           style={{ display: 'none' }}
           onChange={handleFileChange}
