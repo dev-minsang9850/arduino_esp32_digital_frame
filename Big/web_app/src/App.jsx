@@ -70,19 +70,47 @@ function App() {
       return;
     }
 
-    // Only allow JPEG
-    if (!file.type.match('image/jpeg')) {
-      setErrorMsg('액자는 JPG/JPEG 형식의 사진만 띄울 수 있어요!');
-      return;
-    }
-
     setIsUploading(true);
     setErrorMsg('');
-    
-    const formData = new FormData();
-    formData.append('file', file);
 
     try {
+      // Convert to JPEG using Canvas (so PNG, WebP etc work on ESP32)
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      
+      const fileToUpload = await new Promise((resolve, reject) => {
+        img.onload = () => {
+          URL.revokeObjectURL(objectUrl);
+          
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = "#FFFFFF"; // PNG transparency to white
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          
+          canvas.toBlob((blob) => {
+            if (blob) {
+              // Extract original name without extension and add .jpg
+              const newName = file.name.replace(/\.[^/.]+$/, "") + "_" + Date.now() + ".jpg";
+              resolve(new File([blob], newName, { type: "image/jpeg" }));
+            } else {
+              reject(new Error("이미지 변환 실패"));
+            }
+          }, "image/jpeg", 0.9);
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error("이미지를 읽을 수 없습니다."));
+        };
+        img.src = objectUrl;
+      });
+      
+      const formData = new FormData();
+      formData.append('file', fileToUpload);
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); 
       
@@ -279,7 +307,7 @@ function App() {
         {/* Hidden File Input */}
         <input 
           type="file" 
-          accept="image/jpeg, image/jpg" 
+          accept="image/*" 
           ref={fileInputRef}
           style={{ display: 'none' }}
           onChange={handleFileChange}
