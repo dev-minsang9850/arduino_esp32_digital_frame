@@ -1,0 +1,24 @@
+# Flutter / Dart
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/.pub/
+
+# Node / JS
+**/node_modules/
+**/dist/
+**/.npm/
+
+# IDE / OS
+**/.DS_Store
+**/.vscode/
+**/.idea/
+*.swp
+
+# C / C++ / ESP32 build artifacts
+**/.pio/
+**/.cxx/
+**/CMakeCache.txt
+**/CMakeFiles/
