@@ -53,14 +53,10 @@ function App() {
   };
 
   const handleUploadClick = () => {
-    console.log('Upload button clicked');
-    alert('버튼 클릭됨! 파일 선택창을 엽니다.');
     fileInputRef.current?.click();
   };
 
   const handleFileChange = async (e) => {
-    console.log('File selection changed', e.target.files);
-    alert('파일 선택됨: ' + (e.target.files[0] ? e.target.files[0].name : '없음'));
     const file = e.target.files[0];
     if (!file) return;
     
@@ -143,7 +139,6 @@ function App() {
         throw new Error(`HTTP Error ${response.status}`);
       }
       
-      alert('업로드 성공! 사진이 액자에 전송되었습니다.');
       fetchPhotos();
     } catch (err) {
       setErrorMsg(`전송 오류: ${err.message} (다시 시도해주세요)`);
