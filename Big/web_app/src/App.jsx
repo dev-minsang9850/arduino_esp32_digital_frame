@@ -60,9 +60,9 @@ function App() {
     const file = e.target.files[0];
     if (!file) return;
     
-    // Check file size (optional, limit to 2MB for ESP32 safety)
-    if (file.size > 2 * 1024 * 1024) {
-      setErrorMsg('사진 용량이 너무 큽니다! (최대 2MB)');
+    // Check file size (optional, limit to 10MB for ESP32 safety)
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMsg('사진 용량이 너무 큽니다! (최대 10MB)');
       return;
     }
 
@@ -86,13 +86,13 @@ function App() {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        throw new Error('업로드 실패');
+        throw new Error(`HTTP Error ${response.status}`);
       }
       
       // Success! Refresh list
       fetchPhotos();
     } catch (err) {
-      setErrorMsg('다른 친구가 사진을 전송하고 있어요! 잠시 기다렸다가 다시 시도해주세요 😊');
+      setErrorMsg(`전송 오류: ${err.message} (다시 시도해주세요)`);
       console.error(err);
     } finally {
       setIsUploading(false);
