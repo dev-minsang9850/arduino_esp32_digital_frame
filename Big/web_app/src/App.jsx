@@ -82,14 +82,31 @@ function App() {
         img.onload = () => {
           URL.revokeObjectURL(objectUrl);
           
+          // CYD Screen resolution is exactly 320x240
+          const TARGET_WIDTH = 320;
+          const TARGET_HEIGHT = 240;
+          
           const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
+          canvas.width = TARGET_WIDTH;
+          canvas.height = TARGET_HEIGHT;
           
           const ctx = canvas.getContext('2d');
-          ctx.fillStyle = "#FFFFFF"; // PNG transparency to white
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0);
+          
+          // Fill background with black (letterboxing for different aspect ratios)
+          ctx.fillStyle = "#000000";
+          ctx.fillRect(0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+          
+          // Calculate scale to fit image inside 320x240 (object-fit: contain)
+          const scale = Math.min(TARGET_WIDTH / img.width, TARGET_HEIGHT / img.height);
+          const scaledWidth = img.width * scale;
+          const scaledHeight = img.height * scale;
+          
+          // Center the image
+          const dx = (TARGET_WIDTH - scaledWidth) / 2;
+          const dy = (TARGET_HEIGHT - scaledHeight) / 2;
+          
+          // Draw the resized and centered image
+          ctx.drawImage(img, dx, dy, scaledWidth, scaledHeight);
           
           canvas.toBlob((blob) => {
             if (blob) {
