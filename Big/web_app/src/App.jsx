@@ -75,7 +75,7 @@ function App() {
     try {
       // Setup an AbortController for timeout (ESP32 might take a while to save)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
       
       const response = await fetch(`http://${espIp}/upload`, {
         method: 'POST',
