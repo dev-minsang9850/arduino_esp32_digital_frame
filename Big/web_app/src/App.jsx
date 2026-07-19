@@ -53,16 +53,26 @@ function App() {
   };
 
   const handleUploadClick = () => {
+    console.log('Upload button clicked');
+    alert('버튼 클릭됨! 파일 선택창을 엽니다.');
     fileInputRef.current?.click();
   };
 
   const handleFileChange = async (e) => {
+    console.log('File selection changed', e.target.files);
+    alert('파일 선택됨: ' + (e.target.files[0] ? e.target.files[0].name : '없음'));
     const file = e.target.files[0];
     if (!file) return;
     
     // Check file size (optional, limit to 10MB for ESP32 safety)
     if (file.size > 10 * 1024 * 1024) {
       setErrorMsg('사진 용량이 너무 큽니다! (최대 10MB)');
+      return;
+    }
+
+    // Only allow JPEG
+    if (!file.type.match('image/jpeg')) {
+      setErrorMsg('액자는 JPG/JPEG 형식의 사진만 띄울 수 있어요!');
       return;
     }
 
@@ -73,9 +83,8 @@ function App() {
     formData.append('file', file);
 
     try {
-      // Setup an AbortController for timeout (ESP32 might take a while to save)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
+      const timeoutId = setTimeout(() => controller.abort(), 60000); 
       
       const response = await fetch(`http://${espIp}/upload`, {
         method: 'POST',
@@ -89,7 +98,7 @@ function App() {
         throw new Error(`HTTP Error ${response.status}`);
       }
       
-      // Success! Refresh list
+      alert('업로드 성공! 사진이 액자에 전송되었습니다.');
       fetchPhotos();
     } catch (err) {
       setErrorMsg(`전송 오류: ${err.message} (다시 시도해주세요)`);
@@ -270,7 +279,7 @@ function App() {
         {/* Hidden File Input */}
         <input 
           type="file" 
-          accept="image/*" 
+          accept="image/jpeg, image/jpg" 
           ref={fileInputRef}
           style={{ display: 'none' }}
           onChange={handleFileChange}
