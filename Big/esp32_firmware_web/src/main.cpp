@@ -499,6 +499,17 @@ void setupWebServer() {
     server.on("/view", HTTP_GET, handleViewPhoto);
     server.on("/delete_get", HTTP_GET, handleDeletePhoto);
     
+    server.onNotFound([]() {
+        if (server.method() == HTTP_OPTIONS) {
+            server.sendHeader("Access-Control-Allow-Origin", "*");
+            server.sendHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE");
+            server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+            server.send(204);
+        } else {
+            server.send(404, "text/plain", "Not found");
+        }
+    });
+
     server.enableCORS(true); // Allow Web App to connect via browser
     server.begin();
     Serial.println("HTTP Web Server started on port 80 (CORS Enabled).");
