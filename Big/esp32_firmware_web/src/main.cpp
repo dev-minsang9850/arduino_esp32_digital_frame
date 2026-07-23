@@ -53,6 +53,13 @@ bool isUploading = false; // 업로드 중 SPI 충돌 방지 플래그
 unsigned long lastTouchCheckTime = 0;
 const unsigned long touchCheckInterval = 100; // 100ms (0.1초) 주기로만 터치 체크
 
+// DEL 버튼 표시 및 제스처 상태 변수 (더블탭 / 길게 누르기)
+bool isDelVisible = false;
+unsigned long delVisibleStartTime = 0;
+unsigned long touchStartTime = 0;
+bool isTouching = false;
+unsigned long lastTapReleaseTime = 0;
+
 // Delete UI Area coordinates (Rotation 3: 320x240)
 const int TRASH_X = 270;
 const int TRASH_Y = 190;
@@ -232,6 +239,14 @@ void loop() {
 
     // 업로드 중이 아닐 때만 화면 갱신 및 터치 처리 (SPI 버스 충돌 100% 방지)
     if (!isUploading) {
+        // DEL 버튼 5초 후 자동 숨김 처리
+        if (isDelVisible && (millis() - delVisibleStartTime >= 5000)) {
+            isDelVisible = false;
+            if (isShowingPhoto && photoFiles.size() > 0) {
+                showPhoto(photoFiles[currentPhotoIndex]);
+            }
+        }
+
         // 0.1초(100ms) 간격으로만 터치 입력 체크
         if (millis() - lastTouchCheckTime >= touchCheckInterval) {
             handleTouch();
@@ -667,7 +682,7 @@ void showPhoto(const String& path) {
     tft.setTextDatum(TL_DATUM); // Top-Left
     tft.drawString(path + " (" + String(currentPhotoIndex + 1) + "/" + String(photoFiles.size()) + ")", 5, 2, 2);
     
-    drawTrashIcon();
+    isDelVisible = false; // 사진이 표시될 때는 DEL 버튼 숨김
     isShowingPhoto = true;
 }
 
@@ -681,7 +696,9 @@ void drawTrashIcon() {
 
 // Touch Input Management
 void handleTouch() {
-    if (ts.touched()) {
+    bool touchedNow = ts.touched();
+    
+    if (touchedNow) {
         TS_Point p = ts.getPoint();
         
         // 2. Bypass invalid/error raw signals
@@ -690,37 +707,81 @@ void handleTouch() {
         }
         
         // Swap X and Y mapping to align with rotated CYD hardware touch sensors
-        // 좌우/상하 완전 교정: 최소값(240)을 0으로, 최대값(3800)을 화면 끝으로 정방향 매핑
         uint16_t tx = map(p.y, 240, 3800, 0, 320); 
         uint16_t ty = map(p.x, 240, 3800, 0, 240); 
         
         Serial.printf("Touch raw: (%d, %d) -> Mapped: (%d, %d)\n", p.x, p.y, tx, ty);
         
-        // [REFRESH BUTTON HANDLER] 기기 좌표 (275, 105) 핀포인트 튜닝 매핑 완료!
-        if (tx >= 240 && tx <= 310 && ty >= 80 && ty <= 130) {
-            Serial.println("Refresh button pressed!");
-            tft.fillRoundRect(100, 185, 120, 35, 6, TFT_BLUE);
-            tft.setTextColor(TFT_WHITE);
-            tft.drawString("REFRESH", 160, 202, 2);
-            delay(300); // Visual feedback pause
+        // 터치 시작 및 제스처 (더블 탭 / 길게 누르기) 감지
+        if (!isTouching) {
+            isTouching = true;
+            touchStartTime = millis();
             
-            loadPhotoList();
-            isShowingPhoto = false; // Next loop will redraw standby UI
-            return;
+            // 더블 탭 감지 (350ms 이내 재터치)
+            if (millis() - lastTapReleaseTime < 350) {
+                if (isShowingPhoto && photoFiles.size() > 0 && !isDelVisible) {
+                    isDelVisible = true;
+                    delVisibleStartTime = millis();
+                    drawTrashIcon();
+                    Serial.println("Double tap detected -> DEL button shown");
+                    return;
+                }
+            }
+        } else {
+            // 길게 누르기 감지 (400ms 이상 누르고 있음)
+            if (millis() - touchStartTime > 400) {
+                if (isShowingPhoto && photoFiles.size() > 0 && !isDelVisible) {
+                    isDelVisible = true;
+                    delVisibleStartTime = millis();
+                    drawTrashIcon();
+                    Serial.println("Long press detected -> DEL button shown");
+                    return;
+                }
+            }
         }
         
-        // [DEL BUTTON HANDLER] X: 220 ~ 320, Y: 150 ~ 240 대폭 넓혀서 보정 오차 완전 극복!
-        if (tx >= 220 && tx <= 320 && ty >= 150 && ty <= 240) {
-            Serial.println("Trash icon pressed!");
-            
-            // 삭제 시작됨을 보여주는 시각 피드백 추가
-            tft.fillScreen(TFT_BLACK);
-            tft.setTextColor(TFT_RED);
-            tft.setTextDatum(MC_DATUM);
-            tft.drawString("Deleting Photo...", 160, 120, 4);
-            delay(500);
-            
-            deleteCurrentPhoto();
+        // [REFRESH BUTTON HANDLER] 사진이 없을 때 대기 화면 버튼
+        if (photoFiles.size() == 0) {
+            if (tx >= 240 && tx <= 310 && ty >= 80 && ty <= 130) {
+                Serial.println("Refresh button pressed!");
+                tft.fillRoundRect(100, 185, 120, 35, 6, TFT_BLUE);
+                tft.setTextColor(TFT_WHITE);
+                tft.drawString("REFRESH", 160, 202, 2);
+                delay(300);
+                
+                loadPhotoList();
+                isShowingPhoto = false;
+                return;
+            }
+        }
+        
+        // [DEL BUTTON HANDLER] DEL 버튼이 표시된 상태일 때만 처리
+        if (isDelVisible) {
+            if (tx >= 220 && tx <= 320 && ty >= 150 && ty <= 240) {
+                Serial.println("Trash icon pressed!");
+                isDelVisible = false;
+                
+                tft.fillScreen(TFT_BLACK);
+                tft.setTextColor(TFT_RED);
+                tft.setTextDatum(MC_DATUM);
+                tft.drawString("Deleting Photo...", 160, 120, 4);
+                delay(500);
+                
+                deleteCurrentPhoto();
+                return;
+            } else if (millis() - touchStartTime > 200) {
+                // DEL 버튼 바깥 화면을 누르면 DEL 버튼 숨김
+                isDelVisible = false;
+                if (photoFiles.size() > 0) {
+                    showPhoto(photoFiles[currentPhotoIndex]);
+                }
+                return;
+            }
+        }
+    } else {
+        if (isTouching) {
+            isTouching = false;
+            lastTapReleaseTime = millis();
         }
     }
 }
