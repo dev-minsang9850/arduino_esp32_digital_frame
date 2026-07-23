@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -81,16 +79,37 @@ class _GalleryScreenState extends State<GalleryScreen> {
         throw Exception("Failed to decode the chosen image.");
       }
 
-      // 3. Resize to 320x240 (fitting the ESP32 CYD exact Landscape resolution)
-      img.Image resizedImage = img.copyResize(
+      // 3. Resize & Letterbox to 320x240 (preserving aspect ratio with black margins)
+      double scale = 320 / originalImage.width;
+      if (240 / originalImage.height < scale) {
+        scale = 240 / originalImage.height;
+      }
+
+      int scaledWidth = (originalImage.width * scale).round();
+      int scaledHeight = (originalImage.height * scale).round();
+
+      img.Image scaledImage = img.copyResize(
         originalImage,
-        width: 320,
-        height: 240,
+        width: scaledWidth,
+        height: scaledHeight,
         interpolation: img.Interpolation.cubic,
       );
 
+      img.Image finalCanvas = img.Image(width: 320, height: 240);
+      img.fill(finalCanvas, color: img.ColorRgb8(0, 0, 0));
+
+      int dstX = (320 - scaledWidth) ~/ 2;
+      int dstY = (240 - scaledHeight) ~/ 2;
+
+      img.compositeImage(
+        finalCanvas,
+        scaledImage,
+        dstX: dstX,
+        dstY: dstY,
+      );
+
       // 4. Re-compress as JPEG
-      List<int> compressedJpg = img.encodeJpg(resizedImage, quality: 85);
+      List<int> compressedJpg = img.encodeJpg(finalCanvas, quality: 85);
 
       // 5. Send to ESP32 local HTTP server
       final uri = Uri.parse('http://${widget.esp32Ip}/upload');
