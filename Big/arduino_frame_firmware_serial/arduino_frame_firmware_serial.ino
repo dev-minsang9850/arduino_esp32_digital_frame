@@ -147,47 +147,12 @@ void setup() {
     tft.setRotation(3); // Landscape: 320x240
     tft.setSwapBytes(true); // RGB 색상 꼬임 방지 바이트 스왑 활성화 (화질/색감 정상화)
     tft.fillScreen(TFT_BLACK);
-    tft.setTextColor(TFT_WHITE);
+    tft.setTextColor(TFT_CYAN);
     tft.setTextDatum(MC_DATUM);
-    tft.drawString("Initializing...", 160, 120, 4);
-
-    // 3초간 진행바를 그리며 BOOT 버튼(GPIO 0) 감지
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextColor(TFT_YELLOW);
-    tft.setTextDatum(MC_DATUM);
-    tft.drawString("Reset Option", 160, 60, 4);
+    tft.drawString("USB Serial Frame Mode", 160, 100, 4);
     tft.setTextColor(TFT_WHITE);
-    tft.drawString("Hold BOOT button to Reset WiFi", 160, 110, 2);
-
-    bool forceReset = false;
-    unsigned long bootStartTime = millis();
-    while (millis() - bootStartTime < 3000) {
-        int progress = map(millis() - bootStartTime, 0, 3000, 0, 100);
-        tft.fillRect(60, 160, 200, 10, TFT_DARKGREY);
-        tft.fillRect(60, 160, progress * 2, 10, TFT_BLUE);
-        
-        if (digitalRead(BOOT_BUTTON_PIN) == LOW) {
-            delay(150); // 디바운스 대기
-            if (digitalRead(BOOT_BUTTON_PIN) == LOW) {
-                forceReset = true;
-                break;
-            }
-        }
-        delay(50);
-    }
-
-    if (forceReset) {
-        Serial.println("Factory Reset confirmed via physical BOOT button!");
-        preferences.begin("wifi-creds", false);
-        preferences.clear();
-        preferences.end();
-        
-        tft.fillScreen(TFT_RED);
-        tft.setTextColor(TFT_WHITE);
-        tft.drawString("WiFi Cleared!", 160, 100, 4);
-        tft.drawString("Entering BLE setup...", 160, 140, 2);
-        delay(2000);
-    }
+    tft.drawString("Initializing...", 160, 140, 2);
+    delay(500);
 
     // 강제로 TFT와 터치 CS를 한 번 더 끊어줌 (통신 간섭 가드)
     digitalWrite(TFT_CS_PIN, HIGH);
@@ -206,19 +171,6 @@ void setup() {
     TJpgDec.setJpgScale(1);
     TJpgDec.setCallback(tft_output);
 
-    // 시리얼 펌웨어 모드: 와이파이 연결 시도 (연결되면 시리얼+웹 동시 가능, 안되면 오프라인 시리얼 작동)
-    preferences.begin("wifi-creds", true);
-    String ssid = preferences.getString("ssid", "");
-    String password = preferences.getString("password", "");
-    preferences.end();
-
-    if (ssid.length() > 0) {
-        Serial.printf("Stored SSID found: %s. Attempting connection.\n", ssid.c_str());
-        connectToWiFi();
-    } else {
-        Serial.println("No Wi-Fi credentials found. Operating in USB Serial Standalone Mode.");
-    }
-
     loadPhotoList();
     lastPhotoSwitchTime = millis();
 
@@ -229,10 +181,7 @@ void setup() {
 }
 
 void loop() {
-    if (WiFi.status() == WL_CONNECTED) {
-        server.handleClient();
-    }
-    handleSerialUpload(); // PC 시리얼 통신 감지 (와이파이 없이도 항상 작동!)
+    handleSerialUpload(); // PC 시리얼 통신 감지 (USB 100% 전용)
 
     // 업로드 중이 아닐 때만 화면 갱신 및 터치 처리 (SPI 버스 충돌 100% 방지)
     if (!isUploading) {
