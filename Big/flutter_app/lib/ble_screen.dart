@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'wifi_screen.dart';
+import 'gallery_screen.dart';
 
 class BleScreen extends StatefulWidget {
   const BleScreen({super.key});
@@ -139,6 +141,47 @@ class _BleScreenState extends State<BleScreen> {
     super.dispose();
   }
 
+  void _showManualIpDialog(BuildContext context) {
+    final TextEditingController ipController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('직접 IP 입력 (Skip Bluetooth)'),
+        content: TextField(
+          controller: ipController,
+          decoration: const InputDecoration(
+            hintText: 'ex) 192.168.0.10',
+            border: OutlineInputBorder(),
+          ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final ip = ipController.text.trim();
+              if (ip.isNotEmpty) {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setString('esp32_ip', ip);
+                if (mounted) {
+                  Navigator.pop(context);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => GalleryScreen(esp32Ip: ip)),
+                  );
+                }
+              }
+            },
+            child: const Text('연결'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -156,6 +199,11 @@ class _BleScreenState extends State<BleScreen> {
               onPressed: _startScan,
             ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showManualIpDialog(context),
+        icon: const Icon(Icons.wifi),
+        label: const Text('직접 IP 입력'),
       ),
       body: Container(
         decoration: BoxDecoration(
