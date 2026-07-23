@@ -206,17 +206,17 @@ void setup() {
     TJpgDec.setJpgScale(1);
     TJpgDec.setCallback(tft_output);
 
+    // 시리얼 펌웨어 모드: 와이파이 연결 시도 (연결되면 시리얼+웹 동시 가능, 안되면 오프라인 시리얼 작동)
     preferences.begin("wifi-creds", true);
     String ssid = preferences.getString("ssid", "");
     String password = preferences.getString("password", "");
     preferences.end();
 
-    if (ssid == "" || ssid.length() == 0) {
-        Serial.println("No Wi-Fi credentials found. Starting BLE Provisioning.");
-        startBLEProvisioning();
-    } else {
+    if (ssid.length() > 0) {
         Serial.printf("Stored SSID found: %s. Attempting connection.\n", ssid.c_str());
         connectToWiFi();
+    } else {
+        Serial.println("No Wi-Fi credentials found. Operating in USB Serial Standalone Mode.");
     }
 
     loadPhotoList();
@@ -229,13 +229,10 @@ void setup() {
 }
 
 void loop() {
-    if (inProvisioningMode) {
-        delay(100);
-        return;
+    if (WiFi.status() == WL_CONNECTED) {
+        server.handleClient();
     }
-
-    server.handleClient();
-    handleSerialUpload(); // PC 시리얼 통신 감지
+    handleSerialUpload(); // PC 시리얼 통신 감지 (와이파이 없이도 항상 작동!)
 
     // 업로드 중이 아닐 때만 화면 갱신 및 터치 처리 (SPI 버스 충돌 100% 방지)
     if (!isUploading) {
@@ -273,10 +270,15 @@ void loop() {
                 tft.fillScreen(TFT_BLACK);
                 tft.setTextColor(TFT_WHITE);
                 tft.setTextDatum(MC_DATUM);
-                tft.drawString("No Photos found on SD Card.", 160, 80, 2);
-                tft.drawString("Upload photos via App.", 160, 110, 2);
-                tft.setTextColor(TFT_GREEN);
-                tft.drawString(WiFi.localIP().toString(), 160, 145, 2);
+                tft.drawString("USB Serial Mode", 160, 80, 4);
+                tft.drawString("Send photos via PC App.", 160, 120, 2);
+                if (WiFi.status() == WL_CONNECTED) {
+                    tft.setTextColor(TFT_GREEN);
+                    tft.drawString("WiFi: " + WiFi.localIP().toString(), 160, 155, 2);
+                } else {
+                    tft.setTextColor(TFT_YELLOW);
+                    tft.drawString("Status: Standalone (Offline)", 160, 155, 2);
+                }
                 
                 // REFRESH 파란색 둥근 버튼 렌더링
                 tft.fillRoundRect(100, 185, 120, 35, 6, TFT_BLUE);
