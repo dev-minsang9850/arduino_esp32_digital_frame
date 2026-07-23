@@ -676,12 +676,6 @@ void showPhoto(const String& path) {
     // TJpgDec 내부에서 SD 카드를 열어 읽음
     TJpgDec.drawSdJpg(0, 0, path.c_str());
     
-    // 현재 표시 중인 파일의 이름과 전체 장수를 작게 표시 (삭제 확인용)
-    tft.fillRect(0, 0, 320, 20, TFT_BLACK);
-    tft.setTextColor(TFT_WHITE);
-    tft.setTextDatum(TL_DATUM); // Top-Left
-    tft.drawString(path + " (" + String(currentPhotoIndex + 1) + "/" + String(photoFiles.size()) + ")", 5, 2, 2);
-    
     isDelVisible = false; // 사진이 표시될 때는 DEL 버튼 숨김
     isShowingPhoto = true;
 }
